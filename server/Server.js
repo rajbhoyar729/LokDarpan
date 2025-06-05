@@ -6,7 +6,7 @@ const port = process.env.PORT||3000
 
 server.listen(port,()=>{
 
-    console.log(`running server on http://localhost:${port}`);
+    console.log(`running server`);
 });
 
 server.on('error', (error) => {
