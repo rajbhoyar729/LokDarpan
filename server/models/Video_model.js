@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Users from "../models/Users_model.js";
 
 const videoSchema = new mongoose.Schema({
     _id:mongoose.Schema.Types.ObjectId,
