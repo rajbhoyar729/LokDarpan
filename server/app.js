@@ -2,10 +2,12 @@ import express from "express";
 import mongoose from "mongoose";
 import { configDotenv } from "dotenv";
 import userRoute  from "./routes/user.js";
-//import commentRoute from "./routes/comment.js";
+import commentRoute from "./routes/comments.js";
 import videoRoute from "./routes/video.js";
 import bodyParser from "body-parser";
 import expressfileUpload from "express-fileupload";
+import cors from 'cors';
+import helmet from 'helmet';
 
 configDotenv()
 const app = express();
@@ -28,10 +30,19 @@ app.use(expressfileUpload(
         }
 ));
 
+app.use(cors());
+app.use(helmet());
 
 app.use('/user',userRoute)
 app.use('/video',videoRoute)
-//app.use('/comment',commentRoute)
+app.use('/comment',commentRoute)
 
+app.use((error, req, res, next) => {
+    console.error(error);
+    const status = error.statusCode || 500;
+    const message = error.message;
+    const data = error.data;
+    res.status(status).json({ message: message, data: data });
+});
 
 export default app; 
