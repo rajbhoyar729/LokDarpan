@@ -6,6 +6,49 @@
 async function videoRoutes(fastify, options) {
   const { videoController, authenticate } = options;
 
+  // Initiate upload route
+  fastify.post('/initiate-upload', {
+    preHandler: [authenticate],
+    schema: {
+      description: 'Initiate video upload by creating a video document with metadata only',
+      tags: ['video'],
+      body: {
+        type: 'object',
+        required: ['title', 'description'],
+        properties: {
+          title: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 200,
+            description: 'Video title',
+          },
+          description: {
+            type: 'string',
+            maxLength: 5000,
+            description: 'Video description',
+          },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          description: 'Created video object',
+        },
+        400: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, videoController.initiateUpload);
+
   // Upload video route
   fastify.post('/upload', {
     preHandler: [authenticate],

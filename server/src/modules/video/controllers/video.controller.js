@@ -6,6 +6,20 @@
 import videoService from '../services/video.service.js';
 
 /**
+ * Handle video upload initiation
+ * @param {FastifyRequest} request - Fastify request
+ * @param {FastifyReply} reply - Fastify reply
+ */
+async function initiateUpload(request, reply) {
+  const userId = request.userId;
+  const { title, description } = request.body;
+
+  const video = await videoService.initiateVideoUpload(title, description, userId);
+
+  return reply.status(201).send(video);
+}
+
+/**
  * Handle video upload
  * @param {FastifyRequest} request - Fastify request
  * @param {FastifyReply} reply - Fastify reply
@@ -157,6 +171,7 @@ async function dislikeVideo(request, reply) {
 }
 
 export {
+  initiateUpload,
   uploadVideo,
   updateVideo,
   deleteVideo,
@@ -165,6 +180,7 @@ export {
 };
 
 export default {
+  initiateUpload,
   uploadVideo,
   updateVideo,
   deleteVideo,

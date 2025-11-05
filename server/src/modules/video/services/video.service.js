@@ -56,6 +56,37 @@ async function createVideo(videoData, videoFile, thumbnailFile) {
 }
 
 /**
+ * Initiate video upload by creating a video document with only metadata
+ * @param {string} title - Video title
+ * @param {string} description - Video description
+ * @param {string} userId - User ID (owner)
+ * @returns {Promise<Object>} Created video with PENDING_METADATA status
+ */
+async function initiateVideoUpload(title, description, userId) {
+  if (!title || !description) {
+    throw new ValidationError('Title and description are required');
+  }
+
+  // Create video document with only metadata
+  const newVideo = new Video({
+    _id: createObjectId(),
+    title,
+    description,
+    user_id: userId,
+    status: 'PENDING_METADATA',
+    videoUrl: null,
+    videoId: null,
+    thumbnailUrl: null,
+    thumbnailId: null,
+    category: null,
+    tags: [],
+  });
+
+  const savedVideo = await newVideo.save();
+  return savedVideo;
+}
+
+/**
  * Get video by ID
  * @param {string} videoId - Video ID
  * @returns {Promise<Object>} Video object
@@ -212,6 +243,7 @@ async function toggleDislike(videoId, userId) {
 
 export {
   createVideo,
+  initiateVideoUpload,
   getVideoById,
   updateVideo,
   deleteVideo,
@@ -221,6 +253,7 @@ export {
 
 export default {
   createVideo,
+  initiateVideoUpload,
   getVideoById,
   updateVideo,
   deleteVideo,
