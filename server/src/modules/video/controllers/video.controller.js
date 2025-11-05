@@ -12,9 +12,9 @@ import videoService from '../services/video.service.js';
  */
 async function initiateUpload(request, reply) {
   const userId = request.userId;
-  const { title, description } = request.body;
+  const metadata = request.body;
 
-  const video = await videoService.initiateVideoUpload(title, description, userId);
+  const video = await videoService.initiateVideoUpload(metadata, userId);
 
   return reply.status(201).send(video);
 }

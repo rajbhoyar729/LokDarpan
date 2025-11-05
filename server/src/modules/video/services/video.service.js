@@ -57,12 +57,15 @@ async function createVideo(videoData, videoFile, thumbnailFile) {
 
 /**
  * Initiate video upload by creating a video document with only metadata
- * @param {string} title - Video title
- * @param {string} description - Video description
+ * @param {Object} metadata - Video metadata
+ * @param {string} metadata.title - Video title
+ * @param {string} metadata.description - Video description
  * @param {string} userId - User ID (owner)
- * @returns {Promise<Object>} Created video with PENDING_METADATA status
+ * @returns {Promise<Object>} Created video with PENDING status
  */
-async function initiateVideoUpload(title, description, userId) {
+async function initiateVideoUpload(metadata, userId) {
+  const { title, description } = metadata;
+
   if (!title || !description) {
     throw new ValidationError('Title and description are required');
   }
@@ -73,7 +76,7 @@ async function initiateVideoUpload(title, description, userId) {
     title,
     description,
     user_id: userId,
-    status: 'PENDING_METADATA',
+    status: 'PENDING',
     videoUrl: null,
     videoId: null,
     thumbnailUrl: null,

@@ -13,8 +13,8 @@ const videoSchema = new mongoose.Schema(
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: COLLECTIONS.USER, required: true },
     status: {
       type: String,
-      enum: ['PENDING_METADATA', 'UPLOADING', 'PROCESSING', 'COMPLETED', 'FAILED'],
-      default: 'PENDING_METADATA',
+      enum: ['PENDING', 'PENDING_METADATA', 'UPLOADING', 'PROCESSING', 'COMPLETED', 'FAILED'],
+      default: 'PENDING',
     },
     videoUrl: { type: String, required: false },
     videoId: { type: String, required: false },
