@@ -14,9 +14,13 @@ async function initiateUpload(request, reply) {
   const userId = request.userId;
   const metadata = request.body;
 
-  const video = await videoService.initiateVideoUpload(metadata, userId);
+  const { videoId, preSignedUrl } = await videoService.initiateVideoUpload(metadata, userId);
 
-  return reply.status(201).send(video);
+  return reply.status(201).send({
+    message: 'Upload initiated',
+    videoId,
+    preSignedUrl,
+  });
 }
 
 /**

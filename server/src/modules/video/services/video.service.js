@@ -1,13 +1,22 @@
-/**
- * Video Service
- * Handles video-related business logic
- */
-
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import Video from '../schemas/video.schema.js';
+import { AWS_CONFIG } from '../../../config/aws.js';
 import { NotFoundError, ValidationError, AuthorizationError } from '../../../utils/errors.js';
 import { isValidObjectId, createObjectId } from '../../../utils/db.js';
 import storageService from '../../../services/storage.service.js';
 import { validateVideoFile, validateImageFile } from '../../../utils/upload.js';
+
+const presignS3Client = new S3Client({
+  region: AWS_CONFIG.region,
+  credentials:
+    AWS_CONFIG.accessKeyId && AWS_CONFIG.secretAccessKey
+      ? {
+          accessKeyId: AWS_CONFIG.accessKeyId,
+          secretAccessKey: AWS_CONFIG.secretAccessKey,
+        }
+      : undefined,
+});
 
 /**
  * Create a new video
@@ -70,13 +79,24 @@ async function initiateVideoUpload(metadata, userId) {
     throw new ValidationError('Title and description are required');
   }
 
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+
+  // Pre-generate an ObjectId so it can be used in the S3 key
+  const videoId = createObjectId();
+
+  // Generate unique raw upload key (e.g., raw-uploads/{userId}/{videoId}.mp4)
+  const fileKey = `raw-uploads/${userId}/${videoId.toString()}.mp4`;
+
   // Create video document with only metadata
   const newVideo = new Video({
-    _id: createObjectId(),
+    _id: videoId,
     title,
     description,
     user_id: userId,
     status: 'PENDING',
+    rawS3Key: fileKey,
     videoUrl: null,
     videoId: null,
     thumbnailUrl: null,
@@ -86,7 +106,22 @@ async function initiateVideoUpload(metadata, userId) {
   });
 
   const savedVideo = await newVideo.save();
-  return savedVideo;
+
+  // Generate a 15-minute pre-signed URL for direct S3 upload
+  const putObjectCommand = new PutObjectCommand({
+    Bucket: AWS_CONFIG.bucketName,
+    Key: fileKey,
+    ContentType: 'video/mp4',
+  });
+
+  const uploadUrl = await getSignedUrl(presignS3Client, putObjectCommand, {
+    expiresIn: 15 * 60,
+  });
+
+  return {
+    videoId: savedVideo._id.toString(),
+    preSignedUrl: uploadUrl,
+  };
 }
 
 /**

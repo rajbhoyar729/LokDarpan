@@ -8,6 +8,8 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import jwt from '@fastify/jwt';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { config } from 'dotenv';
 import { APP_CONFIG } from './config/app.js';
 import { JWT_CONFIG } from './config/jwt.js';
@@ -54,6 +56,64 @@ async function buildApp() {
     secret: JWT_CONFIG.secret,
   });
 
+  // Register Swagger for API documentation
+  await app.register(swagger, {
+    openapi: {
+      openapi: '3.0.0',
+      info: {
+        title: 'LokDarpan API',
+        description: 'LokDarpan is a MERN stack-based video hosting and streaming platform API',
+        version: '1.0.0',
+      },
+      servers: [
+        {
+          url: `http://localhost:${APP_CONFIG.port}`,
+          description: 'Development server',
+        },
+      ],
+      tags: [
+        { name: 'auth', description: 'Authentication endpoints' },
+        { name: 'user', description: 'User management endpoints' },
+        { name: 'video', description: 'Video management endpoints' },
+        { name: 'comments', description: 'Comment management endpoints' },
+        { name: 'system', description: 'System endpoints' },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Bearer token authentication. Format: Bearer <token>',
+          },
+        },
+      },
+    },
+  });
+
+  // Register Swagger UI
+  await app.register(swaggerUi, {
+    routePrefix: '/documentation',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: false,
+    },
+    uiHooks: {
+      onRequest: function (request, reply, next) {
+        next();
+      },
+      preHandler: function (request, reply, next) {
+        next();
+      },
+    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+    transformSpecification: (swaggerObject, request, reply) => {
+      return swaggerObject;
+    },
+    transformSpecificationClone: true,
+  });
+
   // Global error handler
   app.setErrorHandler((error, request, reply) => {
     // Handle validation errors
@@ -86,7 +146,21 @@ async function buildApp() {
   }
 
   // Health check route
-  app.get('/health', async (request, reply) => {
+  app.get('/health', {
+    schema: {
+      description: 'Health check endpoint',
+      tags: ['system'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'ok' },
+            timestamp: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 

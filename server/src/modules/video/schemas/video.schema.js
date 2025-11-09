@@ -18,6 +18,7 @@ const videoSchema = new mongoose.Schema(
     },
     videoUrl: { type: String, required: false },
     videoId: { type: String, required: false },
+    rawS3Key: { type: String, required: false },
     thumbnailUrl: { type: String, required: false },
     thumbnailId: { type: String, required: false },
     category: { type: String, required: false },
