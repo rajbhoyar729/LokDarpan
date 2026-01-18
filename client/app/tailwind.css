@@ -1,0 +1,117 @@
+/* Import Fonts: Inter (Premium Sans) and Space Grotesk (Tech Headings) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+    html,
+    body {
+        @apply h-full bg-dark-950 text-dark-100 font-sans antialiased overflow-x-hidden;
+        /* Premium dark noise/texture could go here if requested, but sticking to clean code for now */
+    }
+
+    /* Refined Typography */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-display tracking-tight text-white;
+    }
+}
+
+@layer components {
+
+    /* 
+   * Premium Component: Glass Panel
+   * Subtle, frosted, thin border. Not "plastic".
+   */
+    .glass-panel {
+        @apply bg-dark-900/40 backdrop-blur-xl border border-white/10 shadow-minimal transition-all duration-300;
+    }
+
+    .glass-panel:hover {
+        @apply bg-dark-900/60 border-white/15 shadow-minimal-hover;
+    }
+
+    /* 
+   * Premium Component: Navigation Pill
+   * Clean, high contrast, minimal background.
+   */
+    .nav-pill {
+        @apply px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border border-transparent;
+        @apply text-dark-400 hover:text-white hover:bg-white/5;
+    }
+
+    .nav-pill.active {
+        @apply bg-white/10 text-white border-white/10 shadow-sm;
+    }
+
+    /* 
+   * Premium Component: Content Card
+   * Focus on imagery and subtle depth.
+   */
+    .lok-card {
+        @apply block relative overflow-hidden rounded-xl bg-dark-900 border border-white/5 transition-all duration-500;
+        @apply hover:border-white/20 hover:shadow-minimal-hover;
+    }
+
+    /* 
+   * Premium form elements
+   */
+    .input-minimal {
+        @apply w-full bg-dark-900/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-dark-500 transition-all duration-200;
+        @apply focus:outline-none focus:border-primary-500/50 focus:bg-dark-800 focus:shadow-glow-subtle focus:ring-1 focus:ring-primary-500/50;
+    }
+
+    /* 
+   * Buttons - "Linear" style
+   */
+    .btn-primary {
+        @apply inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200;
+        @apply bg-white text-black border border-transparent;
+        @apply hover:bg-dark-200 hover:shadow-glow-white;
+        @apply active:scale-95 active:bg-dark-300;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200;
+        @apply bg-dark-800 text-white border border-white/10;
+        @apply hover:bg-dark-700 hover:border-white/20;
+        @apply active:scale-95;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium text-sm text-dark-400 transition-colors duration-200;
+        @apply hover:text-white hover:bg-white/5;
+    }
+
+    /* 
+   * Utilities
+   */
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-dark-400;
+    }
+
+    .spotlight-bg {
+        @apply bg-spotlight fixed inset-0 pointer-events-none z-0;
+    }
+
+    /* Custom Scrollbar - Minimal */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-dark-950;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-dark-800 rounded-full hover:bg-dark-600 transition-colors;
+    }
+}
