@@ -44,8 +44,8 @@ export default function Index() {
 
     return (
         <Layout user={user}>
-            {/* Sticky Category Bar - Glass Effect */}
-            <div className="sticky top-[72px] z-30 py-3 mb-6 -mx-4 px-4 backdrop-blur-2xl bg-dark-950/70 border-b border-white/5">
+            {/* Sticky Category Bar - Solid Background */}
+            <div className="sticky top-[72px] z-40 py-3 mb-6 -mx-4 px-4 bg-dark-950 border-b border-white/5 hidden md:block">
                 <CategoryChips categories={["All", "Tech", "Design", "Music", "Lifestyle", "Gaming", "Code", "Art", "Science"]} />
             </div>
 
@@ -56,12 +56,12 @@ export default function Index() {
 
             {/* ===== SHORTS SECTION ===== */}
             {/* Psychology: Pattern Interrupt + Quick Dopamine Hits */}
-            <section className="mb-16">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30">
-                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <section className="mb-12 md:mb-16 relative z-0">
+                <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                    <div className="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30">
+                        <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h2 className="text-xl font-display font-bold text-white">Shorts</h2>
+                    <h2 className="text-lg md:text-xl font-display font-bold text-white">Shorts</h2>
                 </div>
 
                 {/* Shorts Rail - Horizontal Scroll */}
@@ -90,9 +90,9 @@ export default function Index() {
 
             {/* ===== RECOMMENDED GRID ===== */}
             {/* Psychology: Cognitive Ease (Jakob's Law) + Proximity Principle */}
-            <section className="mb-16">
-                <h2 className="text-xl font-display font-bold text-white mb-8 flex items-center gap-3">
-                    <span className="w-1.5 h-8 bg-gradient-to-b from-accent-400 to-accent-600 rounded-full"></span>
+            <section className="mb-12 md:mb-16">
+                <h2 className="text-lg md:text-xl font-display font-bold text-white mb-6 md:mb-8 flex items-center gap-2 md:gap-3">
+                    <span className="w-1 md:w-1.5 h-6 md:h-8 bg-gradient-to-b from-accent-400 to-accent-600 rounded-full"></span>
                     Recommended For You
                 </h2>
 

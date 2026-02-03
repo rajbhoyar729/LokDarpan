@@ -22,13 +22,13 @@ export function Header({ user }: HeaderProps) {
 
     return (
         <header
-            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-4 md:px-8 py-3 ${scrolled ? "pt-2" : "pt-4"
+            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-4 md:px-8 py-3 bg-dark-950 ${scrolled ? "pt-2 shadow-lg" : "pt-4"
                 }`}
         >
             <div
                 className={`max-w-[1920px] mx-auto transition-all duration-500 ${scrolled
-                        ? "glass-panel px-4 py-2 rounded-full shadow-lg bg-dark-900/80"
-                        : "bg-transparent"
+                    ? "bg-dark-900 px-4 py-2 rounded-full border border-white/10"
+                    : ""
                     }`}
             >
                 <div className="flex items-center justify-between gap-4">

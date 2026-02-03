@@ -32,21 +32,21 @@ export default function Trending() {
             <div className="max-w-6xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-accent-500 to-red-500 flex items-center justify-center shadow-lg shadow-accent-500/20 animate-pulse-slow">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-accent-500 to-red-500 flex items-center justify-center shadow-lg shadow-accent-500/20 animate-pulse-slow shrink-0">
+                        <svg className="w-6 h-6 md:w-8 md:h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
                     </div>
                     <div>
-                        <h1 className="text-4xl font-display font-bold text-white mb-2">Trending Now</h1>
-                        <p className="text-dark-400">The most popular videos on LokDarpan today.</p>
+                        <h1 className="text-2xl md:text-4xl font-display font-bold text-white mb-1 md:mb-2">Trending Now</h1>
+                        <p className="text-dark-400 text-sm md:text-base">The most popular videos on LokDarpan today.</p>
                     </div>
                 </div>
 
                 {/* Hero #1 Rank */}
-                <div className="mb-12 relative group">
-                    <div className="absolute -left-6 -top-6 w-24 h-24 bg-accent-500 text-black font-display font-bold text-6xl flex items-center justify-center rounded-full z-20 shadow-glow-accent border-4 border-dark-950 transform -rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                <div className="mb-8 md:mb-12 relative group">
+                    <div className="absolute -left-2 -top-2 md:-left-6 md:-top-6 w-14 h-14 md:w-24 md:h-24 bg-accent-500 text-black font-display font-bold text-3xl md:text-6xl flex items-center justify-center rounded-full z-20 shadow-glow-accent border-2 md:border-4 border-dark-950 transform -rotate-12 group-hover:rotate-0 transition-transform duration-500">
                         #1
                     </div>
                     <div className="bg-dark-900 rounded-3xl overflow-hidden border border-white/10 shadow-2xl group-hover:border-accent-500/30 transition-all duration-500">
