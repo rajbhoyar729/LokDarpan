@@ -12,9 +12,9 @@ const presignS3Client = new S3Client({
   credentials:
     AWS_CONFIG.accessKeyId && AWS_CONFIG.secretAccessKey
       ? {
-          accessKeyId: AWS_CONFIG.accessKeyId,
-          secretAccessKey: AWS_CONFIG.secretAccessKey,
-        }
+        accessKeyId: AWS_CONFIG.accessKeyId,
+        secretAccessKey: AWS_CONFIG.secretAccessKey,
+      }
       : undefined,
 });
 
@@ -134,13 +134,41 @@ async function getVideoById(videoId) {
     throw new ValidationError('Invalid video ID');
   }
 
-  const video = await Video.findById(videoId);
+  const video = await Video.findById(videoId).populate('user_id');
 
   if (!video) {
     throw new NotFoundError('Video');
   }
 
   return video;
+}
+
+/**
+ * Get all videos
+ * @param {Object} query - Query params
+ * @returns {Promise<Array>} List of videos
+ */
+async function getAllVideos(query = {}) {
+  const { category, search } = query;
+  const filter = {};
+
+  if (category) {
+    filter.category = category;
+  }
+
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  // Only return completed videos or processing
+  filter.status = { $in: ['COMPLETED', 'PROCESSING'] };
+
+  return Video.find(filter)
+    .sort({ createdAt: -1 })
+    .populate('user_id');
 }
 
 /**
@@ -162,10 +190,10 @@ async function updateVideo(videoId, userId, updateData, thumbnailFile = null) {
   // Handle thumbnail update if provided
   if (thumbnailFile) {
     validateImageFile(thumbnailFile);
-    
+
     // Delete old thumbnail
     await storageService.deleteFile(video.thumbnailId);
-    
+
     // Upload new thumbnail
     const thumbnailUpload = await storageService.uploadThumbnail(thumbnailFile);
     updateData.thumbnailUrl = thumbnailUpload.url;
@@ -282,6 +310,7 @@ async function toggleDislike(videoId, userId) {
 export {
   createVideo,
   initiateVideoUpload,
+  getAllVideos,
   getVideoById,
   updateVideo,
   deleteVideo,
@@ -292,6 +321,7 @@ export {
 export default {
   createVideo,
   initiateVideoUpload,
+  getAllVideos,
   getVideoById,
   updateVideo,
   deleteVideo,

@@ -174,6 +174,58 @@ async function dislikeVideo(request, reply) {
   });
 }
 
+/**
+ * Get all videos
+ * @param {FastifyRequest} request - Fastify request
+ * @param {FastifyReply} reply - Fastify reply
+ */
+async function getAllVideos(request, reply) {
+  const query = request.query;
+  const videos = await videoService.getAllVideos(query);
+
+  // Map videos to include channelName and author info
+  const mappedVideos = videos.map(video => {
+    const videoObj = video.toObject();
+    const user = videoObj.user_id;
+
+    if (user) {
+      videoObj.channelName = user.name; // Fallback to user name
+      // TODO: If user has channel, fetch it? Or populate deeper?
+      // For now, let's assume we use user name if no channel details readily available
+      if (user.channel && typeof user.channel === 'object') {
+        videoObj.channelName = user.channel.name;
+        videoObj.channelLogo = user.channel.logoUrl;
+      }
+      // Clean up user object if needed, but client might use other fields
+    }
+    return videoObj;
+  });
+
+  return reply.status(200).send({ videos: mappedVideos });
+}
+
+/**
+ * Get video by ID
+ * @param {FastifyRequest} request - Fastify request
+ * @param {FastifyReply} reply - Fastify reply
+ */
+async function getVideoById(request, reply) {
+  const { videoId } = request.params;
+  const video = await videoService.getVideoById(videoId);
+
+  const videoObj = video.toObject();
+  const user = videoObj.user_id;
+
+  if (user) {
+    videoObj.channelName = user.name;
+    // Basic logic: if we deep populated channel, use it.
+    // Since we only populated user_id, check if we can get more.
+    // Ideally service should populate channel too.
+  }
+
+  return reply.status(200).send({ video: videoObj });
+}
+
 export {
   initiateUpload,
   uploadVideo,
@@ -186,6 +238,8 @@ export {
 export default {
   initiateUpload,
   uploadVideo,
+  getAllVideos,
+  getVideoById,
   updateVideo,
   deleteVideo,
   likeVideo,

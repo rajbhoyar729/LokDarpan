@@ -77,20 +77,17 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-20 md:-mt-16 mb-8 relative z-10">
                 {/* Avatar */}
                 <div className="avatar-xl w-32 h-32 md:w-40 md:h-40 flex items-center justify-center bg-gradient-to-br from-primary-500 to-orange-500 text-white text-4xl md:text-5xl font-bold ring-4 ring-dark-1000 shadow-glow">
-                    {user.logoUrl ? (
-                        <img src={user.logoUrl} alt={user.channelName} className="w-full h-full object-cover" />
-                    ) : (
-                        user.channelName.charAt(0).toUpperCase()
-                    )}
+                    {/* TODO: If user has a channel with logo, show it here. For now, use user initials */}
+                    {user.name.charAt(0).toUpperCase()}
                 </div>
 
                 {/* Channel info */}
                 <div className="flex-1">
                     <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                        {user.channelName}
+                        {user.name}
                     </h1>
                     <p className="text-gray-400 mb-4">
-                        @{user.channelName.toLowerCase().replace(/\s+/g, '')} • {stats.subscribers.toLocaleString()} subscribers • {stats.totalVideos} videos
+                        @{user.name.toLowerCase().replace(/\s+/g, '')} • {stats.subscribers.toLocaleString()} subscribers • {stats.totalVideos} videos
                     </p>
                     <div className="flex flex-wrap gap-3">
                         <Link to="/studio" className="btn-primary">
@@ -105,6 +102,11 @@ export default function Profile() {
                             </svg>
                             Upload Video
                         </Link>
+                        {!user.channel && (
+                            <Link to="/channel/create" className="btn-secondary bg-primary-500/10 text-primary-400 border-primary-500/20">
+                                Create Channel
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

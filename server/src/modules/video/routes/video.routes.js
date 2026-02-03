@@ -6,6 +6,52 @@
 async function videoRoutes(fastify, options) {
   const { videoController, authenticate } = options;
 
+  // Get all videos
+  fastify.get('/', {
+    schema: {
+      description: 'Get all videos',
+      tags: ['video'],
+      querystring: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          search: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            videos: { type: 'array' }
+          }
+        }
+      }
+    }
+  }, videoController.getAllVideos);
+
+  // Get video by ID
+  fastify.get('/:videoId', {
+    schema: {
+      description: 'Get video by ID',
+      tags: ['video'],
+      params: {
+        type: 'object',
+        required: ['videoId'],
+        properties: {
+          videoId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            video: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, videoController.getVideoById);
+
   // Initiate upload route
   fastify.post('/initiate-upload', {
     preHandler: [authenticate],
