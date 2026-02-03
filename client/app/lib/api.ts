@@ -90,7 +90,7 @@ async function apiRequest<T>(
  */
 export const authApi = {
     signup: async (data: {
-        channelName: string;
+        name: string;
         email: string;
         phone: string;
         password: string;
@@ -113,6 +113,26 @@ export const authApi = {
             method: 'POST',
             body: JSON.stringify(data),
         });
+    },
+
+    createChannel: async (formData: FormData, token: string) => {
+        const response = await fetch(`${API_BASE_URL}/channel`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+        });
+
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            return { data: null, error: "Server returned non-JSON response", status: response.status };
+        }
+
+        return { data, error: response.ok ? null : (data.error?.message || data.message), status: response.status };
     },
 };
 
@@ -221,12 +241,10 @@ export const commentApi = {
 // Type definitions
 export interface User {
     _id: string;
-    channelName: string;
+    name: string;
     email: string;
     phone: string;
-    logoUrl?: string;
-    logoId?: string;
-    subscribers: number;
+    channel?: string; // Channel ID
 }
 
 export interface Video {

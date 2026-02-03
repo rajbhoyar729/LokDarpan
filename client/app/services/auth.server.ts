@@ -31,9 +31,9 @@ export async function createUserSession(
     userId: string,
     token: string,
     user: {
-        channelName: string;
+        name: string;
         email: string;
-        logoUrl?: string;
+        channel?: string;
     },
     redirectTo: string
 ) {

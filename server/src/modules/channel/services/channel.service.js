@@ -64,8 +64,14 @@ async function createChannel(channelData) {
 
     const savedChannel = await newChannel.save();
 
-    // Update user with channel reference
-    await User.findByIdAndUpdate(owner, { channel: savedChannel._id });
+    try {
+        // Update user with channel reference
+        await User.findByIdAndUpdate(owner, { channel: savedChannel._id });
+    } catch (error) {
+        // Rollback: delete the created channel if user update fails
+        await Channel.findByIdAndDelete(savedChannel._id);
+        throw error;
+    }
 
     return savedChannel.toObject();
 }

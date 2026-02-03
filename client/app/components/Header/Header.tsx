@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 
 interface HeaderProps {
     user?: {
-        channelName: string;
-        logoUrl?: string;
+        name: string;
+        channel?: string;
     } | null;
 }
 
@@ -94,13 +94,10 @@ export function Header({ user }: HeaderProps) {
                         {user ? (
                             <Link to="/profile" className="w-10 h-10 rounded-full p-0.5 border-2 border-primary-500/50 hover:border-primary-400 transition-all shadow-glow-sm">
                                 <div className="w-full h-full rounded-full bg-dark-800 overflow-hidden">
-                                    {user.logoUrl ? (
-                                        <img src={user.logoUrl} alt={user.channelName} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-primary-gradient text-white font-bold text-xs">
-                                            {user.channelName.charAt(0).toUpperCase()}
-                                        </div>
-                                    )}
+                                    {/* For now, just show initials. Later fetch channel logo if exists */}
+                                    <div className="w-full h-full flex items-center justify-center bg-primary-gradient text-white font-bold text-xs">
+                                        {user.name.charAt(0).toUpperCase()}
+                                    </div>
                                 </div>
                             </Link>
                         ) : (
