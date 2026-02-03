@@ -11,16 +11,15 @@ async function authRoutes(fastify, options) {
     schema: {
       description: 'Create a new user account',
       tags: ['auth'],
-      consumes: ['multipart/form-data'],
       body: {
         type: 'object',
-        required: ['channelName', 'email', 'phone', 'password'],
+        required: ['name', 'email', 'phone', 'password'],
         properties: {
-          channelName: {
+          name: {
             type: 'string',
             minLength: 3,
             maxLength: 50,
-            description: 'Unique channel name',
+            description: 'User name',
           },
           email: {
             type: 'string',
@@ -49,12 +48,9 @@ async function authRoutes(fastify, options) {
               type: 'object',
               properties: {
                 _id: { type: 'string' },
-                channelName: { type: 'string' },
+                name: { type: 'string' },
                 email: { type: 'string' },
                 phone: { type: 'string' },
-                logoUrl: { type: 'string' },
-                logoId: { type: 'string' },
-                subscribers: { type: 'number' },
               },
             },
           },
@@ -104,12 +100,10 @@ async function authRoutes(fastify, options) {
               type: 'object',
               properties: {
                 _id: { type: 'string' },
-                channelName: { type: 'string' },
+                name: { type: 'string' },
                 email: { type: 'string' },
                 phone: { type: 'string' },
-                logoId: { type: 'string' },
-                logoUrl: { type: 'string' },
-                subscribers: { type: 'number' },
+                channel: { type: 'string' }, // ObjectId as string
               },
             },
             token: { type: 'string' },

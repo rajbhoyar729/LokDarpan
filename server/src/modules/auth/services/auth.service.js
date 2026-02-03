@@ -38,10 +38,10 @@ async function comparePassword(password, hash) {
 function generateToken(user) {
   const payload = {
     _id: user._id,
-    channelName: user.channelName,
+    name: user.name,
     email: user.email,
     phone: user.phone,
-    logoId: user.logoId,
+    channel: user.channel
   };
 
   return jwt.sign(payload, JWT_CONFIG.secret, {
@@ -59,38 +59,23 @@ async function emailExists(email) {
   return !!user;
 }
 
-/**
- * Check if channel name exists
- * @param {string} channelName - Channel name
- * @returns {Promise<boolean>}
- */
-async function channelNameExists(channelName) {
-  const user = await User.findOne({ channelName });
-  return !!user;
-}
+
 
 /**
  * Create a new user
  * @param {Object} userData - User data
- * @param {string} userData.channelName - Channel name
+ * @param {string} userData.name - User name
  * @param {string} userData.email - Email address
  * @param {string} userData.phone - Phone number
  * @param {string} userData.password - Plain text password
- * @param {string} userData.logoUrl - Logo URL
- * @param {string} userData.logoId - Logo S3 key
  * @returns {Promise<Object>} Created user
  */
 async function createUser(userData) {
-  const { channelName, email, phone, password, logoUrl, logoId } = userData;
+  const { name, email, phone, password } = userData;
 
   // Check if email already exists
   if (await emailExists(email)) {
     throw new ValidationError('Email already exists');
-  }
-
-  // Check if channel name already exists
-  if (await channelNameExists(channelName)) {
-    throw new ValidationError('Channel name already exists');
   }
 
   // Hash password
@@ -99,16 +84,14 @@ async function createUser(userData) {
   // Create user
   const newUser = new User({
     _id: createObjectId(),
-    channelName,
+    name,
     email,
     phone,
     password: hashedPassword,
-    logoUrl,
-    logoId,
   });
 
   const savedUser = await newUser.save();
-  
+
   // Remove password from response
   const userObj = savedUser.toObject();
   delete userObj.password;
@@ -155,7 +138,6 @@ export {
   createUser,
   login,
   emailExists,
-  channelNameExists,
 };
 
 export default {

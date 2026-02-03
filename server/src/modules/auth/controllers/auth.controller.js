@@ -4,8 +4,6 @@
  */
 
 import authService from '../services/auth.service.js';
-import storageService from '../../../services/storage.service.js';
-import { validateImageFile } from '../../../utils/upload.js';
 
 /**
  * Handle user signup
@@ -13,47 +11,14 @@ import { validateImageFile } from '../../../utils/upload.js';
  * @param {FastifyReply} reply - Fastify reply
  */
 async function signup(request, reply) {
-  // Parse multipart form data
-  const parts = request.parts();
-  const data = {};
-  let logoFile = null;
-
-  for await (const part of parts) {
-    if (part.file) {
-      // It's a file
-      if (part.fieldname === 'logo') {
-        logoFile = part;
-      }
-    } else {
-      // It's a field
-      data[part.fieldname] = part.value;
-    }
-  }
-
-  const { channelName, email, phone, password } = data;
-
-  if (!logoFile) {
-    return reply.status(400).send({
-      error: {
-        message: 'Logo file is required',
-      },
-    });
-  }
-
-  // Validate logo file
-  validateImageFile(logoFile);
-
-  // Upload logo to S3
-  const logoUpload = await storageService.uploadLogo(logoFile);
+  const { name, email, phone, password } = request.body;
 
   // Create user
   const user = await authService.createUser({
-    channelName,
+    name,
     email,
     phone,
     password,
-    logoUrl: logoUpload.url,
-    logoId: logoUpload.key,
   });
 
   return reply.status(201).send({

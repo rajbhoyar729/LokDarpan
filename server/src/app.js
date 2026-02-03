@@ -23,6 +23,8 @@ import authRoutes from './modules/auth/routes/auth.routes.js';
 import userRoutes from './modules/user/routes/user.routes.js';
 import videoRoutes from './modules/video/routes/video.routes.js';
 import commentRoutes from './modules/comments/routes/comment.routes.js';
+import channelRoutes from './modules/channel/routes/channel.routes.js';
+import channelController from './modules/channel/controllers/channel.controller.js';
 
 // Load environment variables
 config();
@@ -185,6 +187,12 @@ async function buildApp() {
   await app.register(commentRoutes, {
     prefix: `${APP_CONFIG.apiPrefix}/comment`,
     commentController,
+    authenticate,
+  });
+
+  await app.register(channelRoutes, {
+    prefix: `${APP_CONFIG.apiPrefix}/channel`,
+    channelController,
     authenticate,
   });
 

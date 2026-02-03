@@ -5,6 +5,7 @@
 
 export const COLLECTIONS = {
   USER: 'User',
+  CHANNEL: 'Channel',
   VIDEO: 'Video',
   COMMENT: 'Comment',
 };
