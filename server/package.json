@@ -5,8 +5,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node Server.js",
-    "dev": "nodemon Server.js",
+    "start": "concurrently -n api,worker -c blue,magenta \"node Server.js\" \"node workers/transcodeEncode.worker.js\"",
+    "dev": "concurrently -n api,worker -c blue,magenta \"nodemon Server.js\" \"node workers/transcodeEncode.worker.js\"",
     "worker:transcode": "node workers/transcodeEncode.worker.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,6 +24,7 @@
     "@fastify/swagger-ui": "^2.1.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.8",
+    "concurrently": "^9.2.1",
     "dotenv": "^16.5.0",
     "fastify": "^4.26.0",
     "ioredis": "^5.10.1",
