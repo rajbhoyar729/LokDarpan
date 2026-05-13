@@ -3,8 +3,9 @@ import { json } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { useState } from "react";
 import { Layout } from "~/components/Layout/Layout";
-import { VideoCard } from "~/components/VideoCard/VideoCard";
 import { getUserFromSession } from "~/services/auth.server";
+import { getServerApiBaseUrl } from "~/lib/api";
+import { HlsPlayer } from "~/components/VideoPlayer/HlsPlayer";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
     return [
@@ -13,117 +14,50 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     ];
 };
 
-// Sample video data
-const sampleVideo = {
-    _id: "1",
-    title: "Building a Modern Video Platform with Remix and Fastify",
-    description: `In this comprehensive tutorial, we'll walk through building a complete video hosting platform from scratch using modern technologies.
-
-What you'll learn:
-• Setting up a Remix frontend with TypeScript
-• Building a Fastify backend with Prisma
-• Video upload and transcoding
-• Real-time features with WebSockets
-• Authentication and authorization
-• Deploying to production
-
-Make sure to like and subscribe for more content like this!
-
-#programming #webdev #tutorial #remix #fastify`,
-    videoUrl: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
-    thumbnailUrl: "https://picsum.photos/seed/video1/1280/720",
-    channelName: "TechTutorials",
-    channelLogo: "https://picsum.photos/seed/channel1/100/100",
-    subscribers: 125000,
-    views: 125000,
-    likes: 8500,
-    dislikes: 120,
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    duration: 1245,
-};
-
-// Sample related videos
-const relatedVideos = [
-    {
-        _id: "2",
-        title: "The Future of Web Development - 2024 Trends",
-        thumbnailUrl: "https://picsum.photos/seed/video2/640/360",
-        channelName: "WebDevPro",
-        views: 89000,
-        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        duration: 892,
-    },
-    {
-        _id: "3",
-        title: "Understanding TypeScript Generics in 10 Minutes",
-        thumbnailUrl: "https://picsum.photos/seed/video3/640/360",
-        channelName: "CodeMaster",
-        views: 45000,
-        createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-        duration: 623,
-    },
-    {
-        _id: "4",
-        title: "React Server Components Deep Dive",
-        thumbnailUrl: "https://picsum.photos/seed/video4/640/360",
-        channelName: "ReactDaily",
-        views: 234000,
-        createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-        duration: 1876,
-    },
-    {
-        _id: "5",
-        title: "CSS Grid vs Flexbox - When to Use What",
-        thumbnailUrl: "https://picsum.photos/seed/video5/640/360",
-        channelName: "CSSNinja",
-        views: 67000,
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        duration: 745,
-    },
-];
-
-// Sample comments
-const sampleComments = [
-    {
-        id: "c1",
-        author: "DevEnthusiast",
-        avatar: "https://picsum.photos/seed/user1/100/100",
-        content: "This is exactly what I was looking for! Great explanation of the concepts. 🔥",
-        likes: 234,
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-        replies: 12,
-    },
-    {
-        id: "c2",
-        author: "CodeNewbie",
-        avatar: "https://picsum.photos/seed/user2/100/100",
-        content: "Can you make a follow-up video about deployment strategies? This was super helpful!",
-        likes: 89,
-        createdAt: new Date(Date.now() - 3600000 * 8).toISOString(),
-        replies: 3,
-    },
-    {
-        id: "c3",
-        author: "SeniorDev",
-        avatar: "https://picsum.photos/seed/user3/100/100",
-        content: "Nice tutorial! One suggestion: consider mentioning error handling patterns in production environments.",
-        likes: 156,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        replies: 7,
-    },
-];
-
 export async function loader({ params, request }: LoaderFunctionArgs) {
     const userSession = await getUserFromSession(request);
     const videoId = params.id;
+    if (!videoId) {
+        throw new Response("Not found", { status: 404 });
+    }
 
-    // TODO: Fetch actual video from API
-    // const video = await videoApi.getById(videoId);
+    const base = getServerApiBaseUrl();
+    const res = await fetch(`${base}/video/${videoId}`);
+    if (!res.ok) {
+        throw new Response("Not found", { status: 404 });
+    }
+    const data = (await res.json()) as { video: Record<string, unknown> };
+    const v = data.video;
+    const user = v.user_id as { name?: string; channel?: { name?: string; logoUrl?: string } } | undefined;
+
+    const channelName =
+        (v.channelName as string) ||
+        user?.channel?.name ||
+        user?.name ||
+        "Creator";
+    const channelLogo = (v.channelLogo as string) || user?.channel?.logoUrl;
+
+    const video = {
+        ...v,
+        _id: String(v._id),
+        title: String(v.title ?? ""),
+        description: String(v.description ?? ""),
+        channelName,
+        channelLogo,
+        subscribers: 0,
+        views: typeof v.views === "number" ? v.views : 0,
+        likes: typeof v.likes === "number" ? v.likes : 0,
+        dislikes: typeof v.dislikes === "number" ? v.dislikes : 0,
+        videoUrl: (v.hlsMasterUrl as string) || (v.videoUrl as string) || "",
+        thumbnailUrl: v.thumbnailUrl as string | undefined,
+        duration: (v.durationSeconds as number) || (v.duration as number),
+        status: v.status as string | undefined,
+        processingError: v.processingError as string | undefined,
+        createdAt: typeof v.createdAt === "string" ? v.createdAt : new Date().toISOString(),
+    };
 
     return json({
-        video: { ...sampleVideo, _id: videoId },
-        relatedVideos,
-        comments: sampleComments,
+        video,
         user: userSession?.user || null,
     });
 }
@@ -158,11 +92,17 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export default function Watch() {
-    const { video, relatedVideos, comments, user } = useLoaderData<typeof loader>();
+    const { video, user } = useLoaderData<typeof loader>();
     const [isLiked, setIsLiked] = useState(false);
     const [isDisliked, setIsDisliked] = useState(false);
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [showFullDescription, setShowFullDescription] = useState(false);
+
+    const playUrl = video.videoUrl || "";
+    const isHls = playUrl.includes(".m3u8");
+    const isProcessing =
+        video.status === "PROCESSING" || video.status === "PENDING" || video.status === "UPLOADING";
+    const isFailed = video.status === "FAILED";
 
     const handleLike = () => {
         setIsLiked(!isLiked);
@@ -182,13 +122,43 @@ export default function Watch() {
                     <div className="flex-1 min-w-0">
                         {/* Video player */}
                         <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-4 shadow-2xl">
-                            <video
-                                src={video.videoUrl}
-                                poster={video.thumbnailUrl}
-                                controls
-                                autoPlay
-                                className="w-full h-full object-contain"
-                            />
+                            {isFailed && (
+                                <div className="w-full h-full flex items-center justify-center text-red-300 p-6 text-center">
+                                    <p>
+                                        This video failed processing.
+                                        {video.processingError
+                                            ? ` ${video.processingError}`
+                                            : ""}
+                                    </p>
+                                </div>
+                            )}
+                            {isProcessing && !isFailed && (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300 p-6 text-center">
+                                    <p>Video is still processing. Refresh in a moment.</p>
+                                </div>
+                            )}
+                            {!isProcessing && !isFailed && isHls && playUrl && (
+                                <HlsPlayer
+                                    src={playUrl}
+                                    poster={video.thumbnailUrl}
+                                    className="w-full h-full object-contain"
+                                    autoPlay
+                                />
+                            )}
+                            {!isProcessing && !isFailed && !isHls && playUrl && (
+                                <video
+                                    src={playUrl}
+                                    poster={video.thumbnailUrl}
+                                    controls
+                                    autoPlay
+                                    className="w-full h-full object-contain"
+                                />
+                            )}
+                            {!isProcessing && !isFailed && !playUrl && (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    No playback URL yet
+                                </div>
+                            )}
                         </div>
 
                         {/* Video title */}
@@ -299,99 +269,17 @@ export default function Watch() {
                             </button>
                         </div>
 
-                        {/* Comments section */}
+                        {/* Comments section — wire to API later */}
                         <div className="mb-6">
-                            <h2 className="text-lg font-semibold text-white mb-4">
-                                {comments.length} Comments
-                            </h2>
-
-                            {/* Add comment */}
-                            <div className="flex gap-3 mb-6">
-                                <div className="avatar-md bg-gradient-to-br from-primary-500 to-orange-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                                    {user?.channelName?.charAt(0).toUpperCase() || "?"}
-                                </div>
-                                <div className="flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Add a comment..."
-                                        className="w-full bg-transparent border-b border-dark-700 pb-2 text-white placeholder-gray-500 focus:border-white focus:outline-none transition-colors"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Comments list */}
-                            <div className="space-y-6">
-                                {comments.map((comment) => (
-                                    <div key={comment.id} className="flex gap-3">
-                                        <div className="avatar-md flex-shrink-0 overflow-hidden">
-                                            <img src={comment.avatar} alt={comment.author} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-medium text-white text-sm">{comment.author}</span>
-                                                <span className="text-xs text-gray-500">{formatTimeAgo(comment.createdAt)}</span>
-                                            </div>
-                                            <p className="text-gray-300 text-sm mb-2">{comment.content}</p>
-                                            <div className="flex items-center gap-4">
-                                                <button className="flex items-center gap-1 text-gray-400 hover:text-white text-sm">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                                    </svg>
-                                                    {comment.likes}
-                                                </button>
-                                                <button className="flex items-center gap-1 text-gray-400 hover:text-white text-sm">
-                                                    <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                                    </svg>
-                                                </button>
-                                                <button className="text-gray-400 hover:text-white text-sm font-medium">
-                                                    Reply
-                                                </button>
-                                            </div>
-                                            {comment.replies > 0 && (
-                                                <button className="flex items-center gap-2 mt-2 text-primary-400 text-sm font-medium hover:text-primary-300">
-                                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M7 10l5 5 5-5z" />
-                                                    </svg>
-                                                    {comment.replies} replies
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <h2 className="text-lg font-semibold text-white mb-4">Comments</h2>
+                            <p className="text-gray-500 text-sm">Comments will appear here.</p>
                         </div>
                     </div>
 
-                    {/* Sidebar - Related videos */}
+                    {/* Sidebar */}
                     <div className="xl:w-[400px] flex-shrink-0">
-                        <h3 className="text-lg font-semibold text-white mb-4">Related videos</h3>
-                        <div className="space-y-3">
-                            {relatedVideos.map((relatedVideo) => (
-                                <Link
-                                    key={relatedVideo._id}
-                                    to={`/watch/${relatedVideo._id}`}
-                                    className="flex gap-3 group"
-                                >
-                                    <div className="w-40 aspect-video rounded-lg overflow-hidden bg-dark-900 flex-shrink-0">
-                                        <img
-                                            src={relatedVideo.thumbnailUrl}
-                                            alt={relatedVideo.title}
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-medium text-white line-clamp-2 group-hover:text-primary-400 transition-colors">
-                                            {relatedVideo.title}
-                                        </h4>
-                                        <p className="text-xs text-gray-400 mt-1">{relatedVideo.channelName}</p>
-                                        <p className="text-xs text-gray-500">
-                                            {formatViews(relatedVideo.views)} views • {formatTimeAgo(relatedVideo.createdAt)}
-                                        </p>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-4">More on LokDarpan</h3>
+                        <p className="text-gray-500 text-sm">Browse the home feed for related videos.</p>
                     </div>
                 </div>
             </div>

@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node Server.js",
     "dev": "nodemon Server.js",
+    "worker:transcode": "node workers/transcodeEncode.worker.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "RajBhoyar729",
@@ -22,8 +23,10 @@
     "@fastify/swagger": "^8.13.0",
     "@fastify/swagger-ui": "^2.1.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.76.8",
     "dotenv": "^16.5.0",
     "fastify": "^4.26.0",
+    "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.2"
   },

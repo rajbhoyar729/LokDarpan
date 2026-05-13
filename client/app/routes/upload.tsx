@@ -1,22 +1,10 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
-import { json, redirect, unstable_parseMultipartFormData, unstable_createMemoryUploadHandler } from "@remix-run/node";
-import { Form, useActionData, useNavigation } from "@remix-run/react";
-import { useState, useCallback } from "react";
+import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { Form, useLoaderData, useNavigation, Link } from "@remix-run/react";
+import { useState, useCallback, type FormEvent } from "react";
 import { Layout } from "~/components/Layout/Layout";
 import { requireUserSession } from "~/services/auth.server";
-
-// Define the action data shape for proper typing
-type ActionData = {
-    errors?: {
-        video?: string;
-        title?: string;
-        description?: string;
-        category?: string;
-        form?: string;
-    } | null;
-    success?: boolean;
-    message?: string;
-};
+import { putVideoToPresignedUrl, videoApi } from "~/lib/api";
 
 export const meta: MetaFunction = () => {
     return [{ title: "Upload Video - LokDarpan" }];
@@ -24,53 +12,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
     const userSession = await requireUserSession(request);
-    return json({ user: userSession.user });
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-    const userSession = await requireUserSession(request);
-
-    try {
-        const uploadHandler = unstable_createMemoryUploadHandler({
-            maxPartSize: 500 * 1024 * 1024, // 500MB
-        });
-
-        const formData = await unstable_parseMultipartFormData(request, uploadHandler);
-
-        const title = formData.get("title") as string;
-        const description = formData.get("description") as string;
-        const category = formData.get("category") as string;
-        const tags = formData.get("tags") as string;
-        const video = formData.get("video") as File;
-
-        // Validation
-        const errors: ActionData["errors"] = {};
-        if (!title || title.length < 1) errors.title = "Title is required";
-        if (!description) errors.description = "Description is required";
-        if (!category) errors.category = "Category is required";
-        if (!video || video.size === 0) errors.video = "Please select a video file";
-
-        if (Object.keys(errors!).length > 0) {
-            return json<ActionData>({ errors, success: false }, { status: 400 });
-        }
-
-        // TODO: Call API to upload video
-        // const apiFormData = new FormData();
-        // apiFormData.append("title", title);
-        // apiFormData.append("description", description);
-        // apiFormData.append("category", category);
-        // apiFormData.append("tags", tags);
-        // apiFormData.append("video", video);
-        // const response = await videoApi.upload(apiFormData, userSession.token);
-
-        // For now, simulate success
-        return json<ActionData>({ errors: null, success: true, message: "Video uploaded successfully!" });
-    } catch (error) {
-        return json<ActionData>(
-            { errors: { form: "Failed to upload video. Please try again." }, success: false },
-            { status: 500 }
-        );
-    }
+    return json({ user: userSession.user, token: userSession.token });
 }
 
 const categories = [
@@ -87,12 +29,16 @@ const categories = [
 ];
 
 export default function Upload() {
-    const actionData = useActionData<ActionData>();
+    const { user, token } = useLoaderData<typeof loader>();
     const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const isNavigating = navigation.state === "submitting";
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [dragActive, setDragActive] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [successId, setSuccessId] = useState<string | null>(null);
+    const [phase, setPhase] = useState<string | null>(null);
 
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -131,33 +77,111 @@ export default function Upload() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
+    async function onSubmit(e: FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setError(null);
+        setSuccessId(null);
+        if (!selectedFile) {
+            setError("Please select a video file.");
+            return;
+        }
+
+        const form = e.currentTarget;
+        const title = (form.elements.namedItem("title") as HTMLInputElement).value.trim();
+        const description = (form.elements.namedItem("description") as HTMLTextAreaElement).value.trim();
+        const category = (form.elements.namedItem("category") as HTMLSelectElement).value;
+        const tags = (form.elements.namedItem("tags") as HTMLInputElement).value.trim();
+
+        if (!title) {
+            setError("Title is required.");
+            return;
+        }
+        if (!description) {
+            setError("Description is required.");
+            return;
+        }
+        if (!category) {
+            setError("Category is required.");
+            return;
+        }
+
+        setBusy(true);
+        try {
+            setPhase("Creating upload…");
+            const init = await videoApi.initiateUpload(
+                { title, description, category, tags: tags || undefined },
+                token
+            );
+            if (init.error || !init.data) {
+                throw new Error(init.error || "Could not start upload");
+            }
+
+            const { videoId, preSignedUrl } = init.data;
+
+            setPhase("Uploading to storage…");
+            const put = await putVideoToPresignedUrl(preSignedUrl, selectedFile);
+            if (!put.ok) {
+                throw new Error(put.error);
+            }
+
+            setPhase("Starting transcoding…");
+            const done = await videoApi.completeUpload(videoId, token);
+            if (done.error || !done.data) {
+                throw new Error(done.error || "Could not complete upload");
+            }
+
+            setPhase("Processing video (multi-quality HLS)…");
+            for (let i = 0; i < 180; i++) {
+                await new Promise(r => setTimeout(r, 2000));
+                const st = await videoApi.getTranscodeStatus(videoId, token);
+                if (st.data?.videoStatus === "COMPLETED") {
+                    setSuccessId(videoId);
+                    setPhase(null);
+                    setBusy(false);
+                    return;
+                }
+                if (st.data?.videoStatus === "FAILED") {
+                    throw new Error(st.data.processingError || "Transcode failed");
+                }
+            }
+            setSuccessId(videoId);
+            setPhase("Still processing — you can open the watch page and refresh.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Upload failed");
+            setPhase(null);
+        } finally {
+            setBusy(false);
+        }
+    }
+
     return (
-        <Layout user={null}>
+        <Layout user={user}>
             <div className="max-w-4xl mx-auto">
                 <h1 className="text-3xl font-bold text-white mb-2">Upload Video</h1>
-                <p className="text-gray-400 mb-8">Share your content with the world</p>
+                <p className="text-gray-400 mb-8">Direct-to-S3 upload, then multi-quality transcoding (144p–1080p HLS)</p>
 
-                {/* Success message */}
-                {actionData?.success && (
+                {successId && (
                     <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <p className="text-green-400 font-medium">Video uploaded successfully!</p>
-                        </div>
+                        <p className="text-green-400 font-medium mb-2">Upload pipeline finished.</p>
+                        <Link to={`/watch/${successId}`} className="text-primary-400 hover:underline">
+                            Open video
+                        </Link>
                     </div>
                 )}
 
-                {/* Error message */}
-                {actionData?.errors?.form && (
+                {error && (
                     <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                        <p className="text-red-400">{actionData.errors.form}</p>
+                        <p className="text-red-400">{error}</p>
                     </div>
                 )}
 
-                <Form method="post" encType="multipart/form-data" className="space-y-6">
-                    {/* Drag and drop zone */}
+                {phase && (
+                    <div className="mb-6 p-4 bg-dark-800 border border-dark-600 rounded-xl text-gray-300 text-sm">
+                        {phase}
+                    </div>
+                )}
+
+                <Form method="post" encType="multipart/form-data" className="space-y-6" onSubmit={onSubmit}>
                     <div
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -212,29 +236,14 @@ export default function Upload() {
                             </div>
                         )}
                     </div>
-                    {actionData?.errors?.video && (
-                        <p className="text-sm text-red-400">{actionData.errors.video}</p>
-                    )}
 
-                    {/* Title */}
                     <div>
                         <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
                             Title <span className="text-primary-500">*</span>
                         </label>
-                        <input
-                            type="text"
-                            id="title"
-                            name="title"
-                            className="input"
-                            placeholder="Add a title that describes your video"
-                            maxLength={200}
-                        />
-                        {actionData?.errors?.title && (
-                            <p className="mt-1 text-sm text-red-400">{actionData.errors.title}</p>
-                        )}
+                        <input type="text" id="title" name="title" className="input" placeholder="Title" maxLength={200} />
                     </div>
 
-                    {/* Description */}
                     <div>
                         <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
                             Description <span className="text-primary-500">*</span>
@@ -247,71 +256,37 @@ export default function Upload() {
                             placeholder="Tell viewers about your video"
                             maxLength={5000}
                         />
-                        {actionData?.errors?.description && (
-                            <p className="mt-1 text-sm text-red-400">{actionData.errors.description}</p>
-                        )}
                     </div>
 
-                    {/* Category */}
                     <div>
                         <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
                             Category <span className="text-primary-500">*</span>
                         </label>
-                        <select
-                            id="category"
-                            name="category"
-                            className="input"
-                        >
+                        <select id="category" name="category" className="input" defaultValue="">
                             <option value="">Select a category</option>
                             {categories.map((cat) => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
-                        {actionData?.errors?.category && (
-                            <p className="mt-1 text-sm text-red-400">{actionData.errors.category}</p>
-                        )}
                     </div>
 
-                    {/* Tags */}
                     <div>
                         <label htmlFor="tags" className="block text-sm font-medium text-gray-300 mb-2">
                             Tags
                         </label>
-                        <input
-                            type="text"
-                            id="tags"
-                            name="tags"
-                            className="input"
-                            placeholder="Add tags separated by commas (e.g., tutorial, coding, web)"
-                        />
-                        <p className="mt-1 text-xs text-gray-500">Tags help people find your video</p>
+                        <input type="text" id="tags" name="tags" className="input" placeholder="comma, separated" />
                     </div>
 
-                    {/* Submit */}
                     <div className="flex items-center justify-end gap-4 pt-4">
-                        <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => window.history.back()}
-                        >
+                        <button type="button" className="btn-secondary" onClick={() => window.history.back()}>
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || !selectedFile}
+                            disabled={busy || isNavigating || !selectedFile}
                             className="btn-primary px-8"
                         >
-                            {isSubmitting ? (
-                                <span className="flex items-center gap-2">
-                                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    Uploading...
-                                </span>
-                            ) : (
-                                "Upload"
-                            )}
+                            {busy ? "Working…" : "Upload"}
                         </button>
                     </div>
                 </Form>

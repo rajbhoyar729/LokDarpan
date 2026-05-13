@@ -3,8 +3,13 @@
  */
 
 const API_BASE_URL = typeof window !== 'undefined'
-    ? (window.ENV?.API_URL || 'http://localhost:5000/api/v1')
-    : (process.env.API_URL || 'http://localhost:5000/api/v1');
+    ? (window.ENV?.API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1')
+    : (process.env.VITE_API_URL || process.env.API_URL || 'http://localhost:5000/api/v1');
+
+/** Base URL for Remix loaders (server) and alignment with VITE_API_URL */
+export function getServerApiBaseUrl(): string {
+    return process.env.VITE_API_URL || process.env.API_URL || 'http://localhost:5000/api/v1';
+}
 
 interface ApiOptions extends RequestInit {
     token?: string;
@@ -189,7 +194,64 @@ export const videoApi = {
             token,
         });
     },
+
+    initiateUpload: async (
+        body: { title: string; description: string; category?: string; tags?: string },
+        token: string
+    ) => {
+        return apiRequest<{ message: string; videoId: string; preSignedUrl: string }>(
+            '/video/initiate-upload',
+            {
+                method: 'POST',
+                body: JSON.stringify(body),
+                token,
+            }
+        );
+    },
+
+    completeUpload: async (videoId: string, token: string) => {
+        return apiRequest<{
+            message: string;
+            status: string;
+            transcodeJobId: string;
+            videoId: string;
+        }>(`/video/${videoId}/complete-upload`, {
+            method: 'POST',
+            token,
+        });
+    },
+
+    getTranscodeStatus: async (videoId: string, token: string) => {
+        return apiRequest<{
+            videoStatus: string;
+            hlsMasterUrl?: string;
+            videoUrl?: string;
+            transcodeJobId?: string;
+            jobState?: string | null;
+            jobProgress?: unknown;
+            processingError?: string;
+            renditions?: VideoRendition[];
+        }>(`/video/${videoId}/transcode-status`, { token });
+    },
 };
+
+/**
+ * Direct PUT to S3 (no Authorization header)
+ */
+export async function putVideoToPresignedUrl(preSignedUrl: string, file: File) {
+    const res = await fetch(preSignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'video/mp4' },
+    });
+    if (!res.ok) {
+        return {
+            ok: false as const,
+            error: `Upload to storage failed (${res.status})`,
+        };
+    }
+    return { ok: true as const };
+}
 
 /**
  * User API
@@ -247,23 +309,38 @@ export interface User {
     channel?: string; // Channel ID
 }
 
+export interface VideoRendition {
+    label: string;
+    height: number;
+    width?: number;
+    bandwidth: number;
+    playlistUrl: string;
+    playlistKey: string;
+}
+
 export interface Video {
     _id: string;
     title: string;
     description: string;
     category?: string;
     tags?: string[];
-    videoUrl: string;
+    status?: string;
+    videoUrl?: string;
+    hlsMasterUrl?: string;
+    renditions?: VideoRendition[];
     thumbnailUrl?: string;
     duration?: number;
+    durationSeconds?: number;
     views: number;
     likes: number;
     dislikes: number;
-    userId: string;
-    channelName: string;
+    userId?: string;
+    user_id?: User & { channel?: { name?: string; logoUrl?: string } };
+    channelName?: string;
     channelLogo?: string;
     createdAt: string;
     updatedAt: string;
+    processingError?: string;
 }
 
 export interface Comment {

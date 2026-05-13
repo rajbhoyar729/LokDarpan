@@ -29,29 +29,6 @@ async function videoRoutes(fastify, options) {
     }
   }, videoController.getAllVideos);
 
-  // Get video by ID
-  fastify.get('/:videoId', {
-    schema: {
-      description: 'Get video by ID',
-      tags: ['video'],
-      params: {
-        type: 'object',
-        required: ['videoId'],
-        properties: {
-          videoId: { type: 'string' }
-        }
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            video: { type: 'object' }
-          }
-        }
-      }
-    }
-  }, videoController.getVideoById);
-
   // Initiate upload route
   fastify.post('/initiate-upload', {
     preHandler: [authenticate],
@@ -72,6 +49,14 @@ async function videoRoutes(fastify, options) {
             type: 'string',
             maxLength: 5000,
             description: 'Video description',
+          },
+          category: {
+            type: 'string',
+            description: 'Video category',
+          },
+          tags: {
+            type: 'string',
+            description: 'Comma-separated tags',
           },
         },
       },
@@ -94,6 +79,55 @@ async function videoRoutes(fastify, options) {
       },
     },
   }, videoController.initiateUpload);
+
+  fastify.post('/:videoId/complete-upload', {
+    preHandler: [authenticate],
+    schema: {
+      description: 'Confirm raw upload finished on S3 and start transcoding',
+      tags: ['video'],
+      params: {
+        type: 'object',
+        required: ['videoId'],
+        properties: { videoId: { type: 'string' } },
+      },
+    },
+  }, videoController.completeUpload);
+
+  fastify.get('/:videoId/transcode-status', {
+    preHandler: [authenticate],
+    schema: {
+      description: 'Transcode / queue status for owner',
+      tags: ['video'],
+      params: {
+        type: 'object',
+        required: ['videoId'],
+        properties: { videoId: { type: 'string' } },
+      },
+    },
+  }, videoController.getTranscodeStatus);
+
+  // Get video by ID (register after /:videoId/transcode-status)
+  fastify.get('/:videoId', {
+    schema: {
+      description: 'Get video by ID',
+      tags: ['video'],
+      params: {
+        type: 'object',
+        required: ['videoId'],
+        properties: {
+          videoId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            video: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, videoController.getVideoById);
 
   // Upload video route
   fastify.post('/upload', {

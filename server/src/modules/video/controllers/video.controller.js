@@ -82,6 +82,22 @@ async function uploadVideo(request, reply) {
   });
 }
 
+async function completeUpload(request, reply) {
+  const userId = request.userId;
+  const { videoId } = request.params;
+
+  const result = await videoService.completeVideoUpload(videoId, userId);
+  return reply.status(200).send(result);
+}
+
+async function getTranscodeStatus(request, reply) {
+  const userId = request.userId;
+  const { videoId } = request.params;
+
+  const status = await videoService.getTranscodeStatus(videoId, userId);
+  return reply.status(200).send(status);
+}
+
 /**
  * Handle video update
  * @param {FastifyRequest} request - Fastify request
@@ -218,9 +234,10 @@ async function getVideoById(request, reply) {
 
   if (user) {
     videoObj.channelName = user.name;
-    // Basic logic: if we deep populated channel, use it.
-    // Since we only populated user_id, check if we can get more.
-    // Ideally service should populate channel too.
+    if (user.channel && typeof user.channel === 'object') {
+      videoObj.channelName = user.channel.name;
+      videoObj.channelLogo = user.channel.logoUrl;
+    }
   }
 
   return reply.status(200).send({ video: videoObj });
@@ -229,6 +246,8 @@ async function getVideoById(request, reply) {
 export {
   initiateUpload,
   uploadVideo,
+  completeUpload,
+  getTranscodeStatus,
   updateVideo,
   deleteVideo,
   likeVideo,
@@ -238,6 +257,8 @@ export {
 export default {
   initiateUpload,
   uploadVideo,
+  completeUpload,
+  getTranscodeStatus,
   getAllVideos,
   getVideoById,
   updateVideo,

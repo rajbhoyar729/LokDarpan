@@ -3,11 +3,20 @@
  * Handles file uploads, deletions, and management for videos, thumbnails, and user logos
  */
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 import { AWS_CONFIG } from '../config/aws.js';
-import { createReadStream } from 'fs';
-import { unlink } from 'fs/promises';
+import { createReadStream, createWriteStream } from 'fs';
+import { unlink, stat } from 'fs/promises';
 import { randomUUID } from 'crypto';
+import { pipeline } from 'stream/promises';
 
 // Initialize S3 client
 const s3Client = new S3Client({
@@ -145,6 +154,116 @@ async function deleteFiles(keys) {
   await Promise.all(keys.map(key => deleteFile(key)));
 }
 
+function buildPublicUrl(key) {
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+  const k = key.includes('amazonaws.com/') ? key.split('.amazonaws.com/')[1] : key;
+  return `https://${AWS_CONFIG.bucketName}.s3.${AWS_CONFIG.region}.amazonaws.com/${k}`;
+}
+
+function normalizeKey(key) {
+  if (!key) return '';
+  return key.includes('amazonaws.com/') ? key.split('.amazonaws.com/')[1] : key;
+}
+
+async function headObject(key) {
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+  const k = normalizeKey(key);
+  return s3Client.send(
+    new HeadObjectCommand({
+      Bucket: AWS_CONFIG.bucketName,
+      Key: k,
+    })
+  );
+}
+
+async function getObjectToFile(key, destPath) {
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+  const k = normalizeKey(key);
+  const out = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: AWS_CONFIG.bucketName,
+      Key: k,
+    })
+  );
+  await pipeline(out.Body, createWriteStream(destPath));
+}
+
+async function uploadStreamToKey(key, bodyStream, contentType) {
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+  const k = normalizeKey(key);
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: AWS_CONFIG.bucketName,
+      Key: k,
+      Body: bodyStream,
+      ContentType: contentType || 'application/octet-stream',
+      ACL: 'public-read',
+    })
+  );
+  return { key: k, url: buildPublicUrl(k) };
+}
+
+async function uploadLocalFile(key, filePath, contentType) {
+  const st = await stat(filePath);
+  if (!st.isFile()) {
+    throw new Error(`Not a file: ${filePath}`);
+  }
+  const stream = createReadStream(filePath);
+  return uploadStreamToKey(key, stream, contentType);
+}
+
+async function listObjectKeysUnderPrefix(prefix) {
+  if (!AWS_CONFIG.bucketName) {
+    throw new Error('S3_BUCKET_NAME is not configured');
+  }
+  const keys = [];
+  let token;
+  do {
+    const res = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: AWS_CONFIG.bucketName,
+        Prefix: prefix,
+        ContinuationToken: token,
+      })
+    );
+    for (const o of res.Contents || []) {
+      if (o.Key) keys.push(o.Key);
+    }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (token);
+  return keys;
+}
+
+async function deleteObjectsByKeys(keys) {
+  if (!keys.length || !AWS_CONFIG.bucketName) return;
+  const chunkSize = 1000;
+  for (let i = 0; i < keys.length; i += chunkSize) {
+    const chunk = keys.slice(i, i + chunkSize);
+    await s3Client.send(
+      new DeleteObjectsCommand({
+        Bucket: AWS_CONFIG.bucketName,
+        Delete: {
+          Objects: chunk.map(Key => ({ Key })),
+          Quiet: true,
+        },
+      })
+    );
+  }
+}
+
+async function deletePrefix(prefix) {
+  const keys = await listObjectKeysUnderPrefix(prefix);
+  await deleteObjectsByKeys(keys);
+}
+
 export {
   uploadFile,
   uploadVideo,
@@ -152,6 +271,15 @@ export {
   uploadLogo,
   deleteFile,
   deleteFiles,
+  buildPublicUrl,
+  headObject,
+  getObjectToFile,
+  uploadStreamToKey,
+  uploadLocalFile,
+  listObjectKeysUnderPrefix,
+  deleteObjectsByKeys,
+  deletePrefix,
+  normalizeKey,
 };
 
 export default {
@@ -160,5 +288,14 @@ export default {
   uploadLogo,
   deleteFile,
   deleteFiles,
+  buildPublicUrl,
+  headObject,
+  getObjectToFile,
+  uploadStreamToKey,
+  uploadLocalFile,
+  listObjectKeysUnderPrefix,
+  deleteObjectsByKeys,
+  deletePrefix,
+  normalizeKey,
 };
 
